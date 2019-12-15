@@ -28,43 +28,11 @@ typedef struct
    EGLDisplay display;
    EGLSurface surface;
    EGLContext context;
-
-#if 0
-   GLuint verbose;
-   GLuint vshader;
-   GLuint fshader;
-   GLuint mshader;
-   GLuint program;
-   GLuint program2;
-   GLuint tex_fb;
-   GLuint tex;
-   GLuint buf;
-// julia attribs
-   GLuint unif_color, attr_vertex, unif_scale, unif_offset, unif_tex, unif_centre; 
-// mandelbrot attribs
-   GLuint attr_vertex2, unif_scale2, unif_offset2, unif_centre2;
-#endif   
 } GLES2_STATE_T;
 
 static GLES2_STATE_T _state, *state=&_state;
 
 #define check() assert(glGetError() == 0)
-
-static void showlog(GLint shader)
-{
-   // Prints the compile log for a shader
-   char log[1024];
-   glGetShaderInfoLog(shader,sizeof log,NULL,log);
-   printf("%d:shader:\n%s\n", shader, log);
-}
-
-static void showprogramlog(GLint shader)
-{
-   // Prints the information log for a program object
-   char log[1024];
-   glGetProgramInfoLog(shader,sizeof log,NULL,log);
-   printf("%d:program:\n%s\n", shader, log);
-}
     
 /***********************************************************
  * Name: init_ogl
@@ -177,7 +145,7 @@ static void init_ogl(GLES2_STATE_T *state)
 
 void _glSwapWindow()
 {
-		eglSwapBuffers(state->display, state->surface);
+	eglSwapBuffers(state->display, state->surface);
 }
  
 //==============================================================================
@@ -213,8 +181,6 @@ void ImGui_NewFrame();
 
 int main ()
 {
-    int terminate = 0;
-    GLfloat cx, cy;
     bcm_host_init();
 
     // Clear application state
@@ -228,11 +194,8 @@ int main ()
 					  SDL_WINDOWPOS_UNDEFINED,
 					  state->screen_width, state->screen_height,
 					  SDL_WINDOW_SHOWN);
-	//SDL_SetWindowFocus(sldWindow);
-	//SDL_SetWindowInputFocus(sdlWindow);//, SDL_WINDOW_FULLSCREEN);
 	ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
-	//io.Fonts->AddFontFromFileTTF("namyangju_godic.otf", 14.0f, NULL, io.Fonts->GetGlyphRangesKorean());
 	io.MouseDrawCursor = true;
 	io.DisplaySize = ImVec2((float)state->screen_width, (float)state->screen_height);
 	ImGui::StyleColorsDark();
@@ -255,10 +218,6 @@ int main ()
         // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
         SDL_Event event;
 		ImGui_ImplSDL2_NewFrame(sdlWindow);
-//		printf("SDL_GetWindowFlags=%x, %x\n", SDL_GetWindowFlags(sdlWindow), SDL_WINDOW_INPUT_FOCUS);
-//		SDL_GetMouseState(&mx, &my);
-//		io.MousePos.x=(float)mx;
-//		io.MousePos.y=(float)my;
 		while (SDL_PollEvent(&event))
 		{
 			ImGui_ImplSDL2_ProcessEvent(&event);
@@ -318,10 +277,3 @@ int main ()
     }
    return 0;
 }
-
-void ImGui_NewFrame()
-{
-//	ImGui_ImplSDL2_NewFrame(sdlWindow);	
-	ImGui::NewFrame();	
-}	
-
