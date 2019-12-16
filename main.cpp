@@ -196,6 +196,7 @@ int main ()
 					  SDL_WINDOW_SHOWN);
 	ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
+	//io.Fonts->AddFontFromFileTTF("namyangju_godic.otf", 16.0f, NULL, io.Fonts->GetGlyphRangesKorean());
 	io.MouseDrawCursor = true;
 	io.DisplaySize = ImVec2((float)state->screen_width, (float)state->screen_height);
 	ImGui::StyleColorsDark();
