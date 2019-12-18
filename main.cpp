@@ -1,205 +1,36 @@
-#include <stdio.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
-#include <assert.h>
-#include <unistd.h>
-#include <SDL.h>
+////////////////////////////////////////////////////////////
+// Headers
+////////////////////////////////////////////////////////////
+#undef SFML_OPENGL_ES
+#define SFML_OPENGL_ES2
 
-#include "bcm_host.h"
-
-#include "GLES2/gl2.h"
-#include "EGL/egl.h"
-#include "EGL/eglext.h"
+#include <SFML/Window.hpp>
+#include <SFML/OpenGL.hpp>
 #include "imgui.h"
-extern "C" {
 #include "imgui_impl_opengl3.h"
-#include "imgui_impl_sdl.h"
-}
 
-typedef struct
+////////////////////////////////////////////////////////////
+/// Entry point of application
+///
+/// \return Application exit code
+///
+////////////////////////////////////////////////////////////
+int main()
 {
-   uint32_t screen_width;
-   uint32_t screen_height;
-// OpenGL|ES objects
-   DISPMANX_ELEMENT_HANDLE_T dispman_element;
-   DISPMANX_DISPLAY_HANDLE_T dispman_display;
-   EGLDisplay display;
-   EGLSurface surface;
-   EGLContext context;
-} GLES2_STATE_T;
+    // Request a 24-bits depth buffer when creating the window
+    sf::ContextSettings contextSettings;
+    contextSettings.depthBits = 24;
 
-static GLES2_STATE_T _state, *state=&_state;
+    // Create the main window
+    sf::Window window(sf::VideoMode(0, 0), "SFML graphics with OpenGL", sf::Style::Default, contextSettings); 
 
-#define check() assert(glGetError() == 0)
-    
-/***********************************************************
- * Name: init_ogl
- *
- * Arguments:
- *       GLES2_STATE_T *state - holds OGLES model info
- *
- * Description: Sets the display, OpenGL|ES context and screen stuff
- *
- * Returns: void
- *
- ***********************************************************/
-static void init_ogl(GLES2_STATE_T *state)
-{
-   int32_t success = 0;
-   EGLBoolean result;
-   EGLint num_config;
-
-   static EGL_DISPMANX_WINDOW_T nativewindow;
-
-   DISPMANX_UPDATE_HANDLE_T dispman_update;
-   VC_RECT_T dst_rect;
-   VC_RECT_T src_rect;
-
-   static const EGLint attribute_list[] =
-   {
-      EGL_RED_SIZE, 8,
-      EGL_GREEN_SIZE, 8,
-      EGL_BLUE_SIZE, 8,
-      EGL_ALPHA_SIZE, 8,
-      EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-      EGL_NONE
-   };
-   
-   static const EGLint context_attributes[] = 
-   {
-      EGL_CONTEXT_CLIENT_VERSION, 2,
-      EGL_NONE
-   };
-   EGLConfig config;
-
-   // get an EGL display connection
-   state->display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-   assert(state->display!=EGL_NO_DISPLAY);
-   check();
-
-   // initialize the EGL display connection
-   result = eglInitialize(state->display, NULL, NULL);
-   assert(EGL_FALSE != result);
-   check();
-
-   // get an appropriate EGL frame buffer configuration
-   result = eglChooseConfig(state->display, attribute_list, &config, 1, &num_config);
-   assert(EGL_FALSE != result);
-   check();
-
-   // get an appropriate EGL frame buffer configuration
-   result = eglBindAPI(EGL_OPENGL_ES_API);
-   assert(EGL_FALSE != result);
-   check();
-
-   // create an EGL rendering context
-   state->context = eglCreateContext(state->display, config, EGL_NO_CONTEXT, context_attributes);
-   assert(state->context!=EGL_NO_CONTEXT);
-   check();
-
-   // create an EGL window surface
-   success = graphics_get_display_size(0 /* LCD */, &state->screen_width, &state->screen_height);
-   assert( success >= 0 );
-
-   dst_rect.x = 0;
-   dst_rect.y = 0;
-   dst_rect.width = state->screen_width;
-   dst_rect.height = state->screen_height;
-      
-   src_rect.x = 0;
-   src_rect.y = 0;
-   src_rect.width = state->screen_width << 16;
-   src_rect.height = state->screen_height << 16;        
-
-   state->dispman_display = vc_dispmanx_display_open( 0 /* LCD */);
-   dispman_update = vc_dispmanx_update_start( 0 );
-         
-   state->dispman_element = vc_dispmanx_element_add ( dispman_update, state->dispman_display,
-      0/*layer*/, &dst_rect, 0/*src*/,
-      &src_rect, DISPMANX_PROTECTION_NONE, 0 /*alpha*/, 0/*clamp*/, DISPMANX_NO_ROTATE /*transform*/);
-      
-   nativewindow.element = state->dispman_element;
-   nativewindow.width = state->screen_width;
-   nativewindow.height = state->screen_height;
-   vc_dispmanx_update_submit_sync( dispman_update );
-      
-   check();
-
-   state->surface = eglCreateWindowSurface( state->display, config, &nativewindow, NULL );
-   assert(state->surface != EGL_NO_SURFACE);
-   check();
-
-   // connect the context to the surface
-   result = eglMakeCurrent(state->display, state->surface, state->surface, state->context);
-   assert(EGL_FALSE != result);
-   check();
-
-   // Set background color and clear buffers
-   glClearColor(0.15f, 0.25f, 0.35f, 1.0f);
-   glClear( GL_COLOR_BUFFER_BIT );
-
-   check();
-}
-
-void _glSwapWindow()
-{
-	eglSwapBuffers(state->display, state->surface);
-}
- 
-//==============================================================================
-
-static void exit_func(void)
-{
-   DISPMANX_UPDATE_HANDLE_T dispman_update;
-   int s;
-   // clear screen
-   glClear( GL_COLOR_BUFFER_BIT );
-   eglSwapBuffers(state->display, state->surface);
-
-   eglDestroySurface( state->display, state->surface );
-
-   dispman_update = vc_dispmanx_update_start( 0 );
-   s = vc_dispmanx_element_remove(dispman_update, state->dispman_element);
-   assert(s == 0);
-   vc_dispmanx_update_submit_sync( dispman_update );
-   s = vc_dispmanx_display_close(state->dispman_display);
-   assert (s == 0);
-
-   // Release OpenGL resources
-   eglMakeCurrent( state->display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT );
-   eglDestroyContext( state->display, state->context );
-   eglTerminate( state->display );
-
-   printf("Image closed\n");
-}
-
-static SDL_Surface *sdlScreen;
-static SDL_Window *sdlWindow;
-void ImGui_NewFrame();
-
-int main ()
-{
-    bcm_host_init();
-
-    // Clear application state
-    memset( state, 0, sizeof( *state ) );
-      
-    // Start OGLES
-    init_ogl(state);
-	SDL_Init(SDL_INIT_EVERYTHING);
-	sdlWindow = SDL_CreateWindow("GLES",
-					  SDL_WINDOWPOS_UNDEFINED,
-					  SDL_WINDOWPOS_UNDEFINED,
-					  state->screen_width, state->screen_height,
-					  SDL_WINDOW_SHOWN);
+    // Make it the active window for OpenGL calls
+    window.setActive();	
 	ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
+	//io.Fonts->AddFontFromFileTTF("namyangju_godic.otf", 16.0f, NULL, io.Fonts->GetGlyphRangesKorean());
 	io.MouseDrawCursor = true;
-	io.DisplaySize = ImVec2((float)state->screen_width, (float)state->screen_height);
-	ImGui::StyleColorsDark();
-	ImGui_ImplSDL2_InitForOpenGL(sdlWindow, state->context);
+	io.DisplaySize = ImVec2((float)window.getSize().x, (float)window.getSize().y);	
 	ImGui_ImplOpenGL3_Init(0); 	
 	ImGui_ImplOpenGL3_NewFrame();
     // Our state
@@ -209,23 +40,25 @@ int main ()
 	// Main loop
     bool done = false;
 	int mx, my;
-    while (!done)
+    while (window.isOpen())
     {
         // Poll and handle events (inputs, window resize, etc.)
         // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
         // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
         // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
         // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-        SDL_Event event;
-		ImGui_ImplSDL2_NewFrame(sdlWindow);
-		while (SDL_PollEvent(&event))
-		{
-			ImGui_ImplSDL2_ProcessEvent(&event);
-			if (event.type == SDL_QUIT)
-				done = true;
-			if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(sdlWindow))
-				done = true;
-		}
+		// Handle mouse events
+		io.MousePos = ImVec2((float)sf::Mouse::getPosition(window).x, (float)sf::Mouse::getPosition(window).y);
+		io.MouseDown[0] = sf::Mouse::isButtonPressed(sf::Mouse::Left);
+		io.MouseDown[1] = sf::Mouse::isButtonPressed(sf::Mouse::Right);
+		io.MouseDown[2] = sf::Mouse::isButtonPressed(sf::Mouse::Middle);
+		
+        // Handle other events
+        sf::Event event;
+        while (window.pollEvent(event))
+        {
+			
+		}			
         // Start the Dear ImGui frame
 		ImGui::NewFrame();
 
@@ -272,8 +105,7 @@ int main ()
         glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-		//glFlush();
-        _glSwapWindow();	
+		window.display();
     }
-   return 0;
+	return 0;
 }

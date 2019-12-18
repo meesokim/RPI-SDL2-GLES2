@@ -21,13 +21,13 @@ COMMON_FLAGS = -DGLFW_INCLUDE_ES2 -DIMGUI_IMPL_OPENGL_ES2 -DIMGUI_IMPL_OPENGL_LO
 SOURCES = $(shell find . -type f \( -iname "*.c" -o -iname "*.cpp" -o -iname "*.cc" \) -print)
 OBJS	= $(shell echo $(SOURCES) | sed -r 's/\.c|\.cpp|.cc/\.o/g')
 #OBJS = main.o kernel.o triangle2.o
-INCLUDE += -Iimgui -I/opt/vc/include -I/usr/include/SDL2
+INCLUDE += -Iimgui -I/opt/vc/include -I/usr/local/include 
 INCLUDE += -I/opt/vc/include/interface/vcos/pthreads -I/opt/vc/include/interface/vmcs_host/linux
 COMMON_FLAGS += -DUSE_EGL -DIS_RPI  $(INCLUDE)
 CFLAGS   = -g -w -O3 -ffast-math -fstrict-aliasing -fomit-frame-pointer $(COMMON_FLAGS) 
 CPPFLAGS = -g $(COMMON_FLAGS)
 
-LIBS     =  -lSDL2 -lz -lbcm_host -lbrcmEGL -lbrcmGLESv2 -lpthread -ludev -lbcm2835 -lasound
+LIBS     =  -lSDL2 -lz -lbcm_host -lbrcmEGL -lbrcmGLESv2 -lpthread -ludev -lbcm2835 -lasound -lsfml-window -lsfml-system
 
 all: $(OBJS) $(TARGET)
 
